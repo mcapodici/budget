@@ -51,6 +51,7 @@ type Msg =
   SetTableState Table.State
   | SetNewAccountName String
   | AddNewAccount
+  | DeleteAccount String
   | Save
   | SaveComplete
   | LoadComplete Master
@@ -66,6 +67,16 @@ update msg ({master} as model) =
     SetNewAccountName name ->
       ( { model | newAccountName = name, errorMessage = "" }
       , Cmd.none
+      )
+    DeleteAccount name ->
+      let newModel =
+        { model | master =
+          { master | accounts =
+            List.filter (\acc -> acc.name /= name) master.accounts
+          }
+        } in
+      (newModel
+      , Storage.setMaster newModel.master
       )
     AddNewAccount ->
       let newAccount = {name = model.newAccountName} in
@@ -88,7 +99,7 @@ update msg ({master} as model) =
       ( model
       , Storage.setMaster master)
     SaveComplete ->
-      ( { model | message = "Successfully Saved" }
+      ( model
       , Cmd.none )
     LoadComplete result ->
       ( { model | master = result }
@@ -115,7 +126,6 @@ view ({ master, tableState, errorMessage, message } as model) =
     , addAccountView model
     , span [ class "error" ] [ text errorMessage ]
     , Table.view config tableState master.accounts
-    , button [ onClick Save ] [ text "Save" ]
     ]
 
 addAccountView : Model -> Html Msg
@@ -126,6 +136,15 @@ addAccountView { newAccountName } =
     , button [ onClick AddNewAccount ] [ text "Add" ]
     ]
 
+deleteColumn : Table.Column Account Msg
+deleteColumn = Table.veryCustomColumn
+  { name = ""
+  , viewData = (\account ->
+    { attributes = []
+    , children = [ button [ onClick <| DeleteAccount account.name ] [ text "Delete" ] ]
+    })
+  , sorter = Table.unsortable }
+
 
 config : Table.Config Account Msg
 config =
@@ -134,6 +153,7 @@ config =
     , toMsg = SetTableState
     , columns =
         [ Table.stringColumn "Name" .name
+        , deleteColumn
         ]
     }
 
