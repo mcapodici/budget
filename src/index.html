@@ -16,7 +16,7 @@
           app.ports.getStoredItem.subscribe(function(key) {
             localforage.getItem(key, function (err, value) {
               // TODO: ERROR CASE
-              app.ports.storageData.send(value);
+              app.ports.getStoredItemSub.send(value);
             });
           });
 
@@ -24,7 +24,7 @@
             var [key, value] = args;
             localforage.setItem(key, value, function (err) {
               // TODO: ERROR CASE
-              app.ports.storageNotification.send(true);
+              app.ports.storeItemSub.send(true);
             });
           });
 

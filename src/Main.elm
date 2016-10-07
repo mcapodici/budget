@@ -148,11 +148,9 @@ subscriptions model = Platform.Sub.batch [
     )
   ]
 
--- INITIAL DATA : TODO : GET FROM STORE!
+-- INITIAL DATA
 
 master : Master
 master = {
-    accounts = [
-      { name = "CC" }
-    ]
+    accounts = []
   }
