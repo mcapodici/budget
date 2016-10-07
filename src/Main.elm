@@ -8,10 +8,8 @@ import Html exposing (Html, div, h1, input, text, button, span)
 import Html.App as App
 import Html.Attributes exposing (class, value)
 import Html.Events exposing (onInput, onClick)
-import Json.Decode
 import Platform.Sub
-import Storage.Keys
-import Storage.Ports
+import Storage.Storage as Storage
 import Table
 
 main : Program Never
@@ -45,7 +43,7 @@ init master =
       }
   in
     ( model
-    , Storage.Ports.getStoredItem Storage.Keys.master )
+    , Storage.getMaster )
 
 -- UPDATE
 
@@ -85,7 +83,7 @@ update msg ({master} as model) =
       , Cmd.none )
     Save ->
       ( model
-      , Storage.Ports.setStoredItem (Storage.Keys.master, Data.Master.encode master))
+      , Storage.setMaster master)
     SaveComplete ->
       ( { model | message = "Successfully Saved" }
       , Cmd.none )
@@ -140,11 +138,11 @@ config =
 
 subscriptions : Model -> Sub Msg
 subscriptions model = Platform.Sub.batch [
-  Storage.Ports.storageNotification (\val ->
+  Storage.setMasterSub (\val ->
     val => SaveComplete
     |= Error "Save failed"),
-  Storage.Ports.storageData (\val ->
-    case Json.Decode.decodeValue Data.Master.decode val of
+  Storage.getMasterSub (\val ->
+    case val of
       Ok master -> LoadComplete master
       Err message -> Error message
     )

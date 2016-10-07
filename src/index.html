@@ -9,7 +9,7 @@
         <script src="js/localforage.nopromises.min.js"></script>
         <script>
 
-          // Handly JS console debug line: localforage.getItem('master', function(err,res){alert(JSON.stringify(res));}) 
+          // Handly JS console debug line: localforage.getItem('master', function(err,res){alert(JSON.stringify(res));})
 
           var app = Elm.Main.fullscreen();
 
@@ -20,7 +20,7 @@
             });
           });
 
-          app.ports.setStoredItem.subscribe(function(args) {
+          app.ports.storeItem.subscribe(function(args) {
             var [key, value] = args;
             localforage.setItem(key, value, function (err) {
               // TODO: ERROR CASE
