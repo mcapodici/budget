@@ -69,8 +69,9 @@ update msg ({master} as model) =
       )
     AddNewAccount ->
       let newAccount = {name = model.newAccountName} in
+      let validationResult = validateAccount newAccount master.accounts in
       let newModel =
-        case validateAccount newAccount master.accounts of
+        case validationResult of
           Just errorMessage -> { model | errorMessage = errorMessage }
           Nothing ->
             { model | master =
@@ -80,7 +81,9 @@ update msg ({master} as model) =
                newAccountName = ""
             } in
       ( newModel
-      , Cmd.none )
+      , case validationResult of
+          Just _ -> Cmd.none
+          Nothing -> Storage.setMaster newModel.master )
     Save ->
       ( model
       , Storage.setMaster master)
