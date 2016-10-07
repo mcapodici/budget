@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <link rel="stylesheet" href="css/style.css">
+    </head>
+    <body>
+        <script src="js/budget.elm.js"></script>
+        <script src="js/localforage.nopromises.min.js"></script>
+        <script>
+
+          // Handly JS console debug line: localforage.getItem('master', function(err,res){alert(JSON.stringify(res));}) 
+
+          var app = Elm.Main.fullscreen();
+
+          app.ports.getStoredItem.subscribe(function(key) {
+            localforage.getItem(key, function (err, value) {
+              // TODO: ERROR CASE
+              app.ports.storageData.send(value);
+            });
+          });
+
+          app.ports.setStoredItem.subscribe(function(args) {
+            var [key, value] = args;
+            localforage.setItem(key, value, function (err) {
+              // TODO: ERROR CASE
+              app.ports.storageNotification.send(true);
+            });
+          });
+
+        </script>
+    </body>
+</html>
