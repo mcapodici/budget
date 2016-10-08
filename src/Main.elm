@@ -8,6 +8,7 @@ import Html.Events exposing (onClick)
 import Platform.Sub
 import Storage.Storage as Storage
 import Pages.Accounts
+import Pages.Categories
 
 main : Program Never
 main =
@@ -23,16 +24,20 @@ main =
 type alias Model =
   { currentTab : Tab,
     accountsModel : Pages.Accounts.Model,
+    categoriesModel : Pages.Categories.Model,
     errorMessage : String
   }
 
 type Tab =
   Accounts
+  | Categories
   | Budget
   | Transactions
 
 toMaster : Model -> Master
-toMaster model = { accounts = model.accountsModel.accounts }
+toMaster model =
+  { accounts = model.accountsModel.accounts
+  , categories = model.categoriesModel.categories }
 
 init : Master -> ( Model, Cmd Msg )
 init master =
@@ -40,6 +45,7 @@ init master =
     model =
       { currentTab = Accounts
       , accountsModel = Pages.Accounts.init master
+      , categoriesModel = Pages.Categories.init master
       , errorMessage = ""
       }
   in
@@ -50,6 +56,7 @@ init master =
 
 type Msg =
   AccountsMsg Pages.Accounts.Msg
+  | CategoriesMsg Pages.Categories.Msg
   | SaveComplete
   | LoadComplete Master
   | Error String
@@ -59,7 +66,6 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
   case msg of
     AccountsMsg msg ->
-      -- TODO AUTOSAVE!
       let (newModel, command) = Pages.Accounts.update msg model.accountsModel in
       let commands =
         newModel.unsaved => [Storage.setMaster <| Pages.Accounts.updateMaster newModel (toMaster model) ]
@@ -68,11 +74,22 @@ update msg model =
         commands ++
         [Cmd.map AccountsMsg command] in
         ({ model | accountsModel = { newModel | unsaved = False }}, Cmd.batch commands2)
+    CategoriesMsg msg ->
+      let (newModel, command) = Pages.Categories.update msg model.categoriesModel in
+      let commands =
+        newModel.unsaved => [Storage.setMaster <| Pages.Categories.updateMaster newModel (toMaster model) ]
+        |= [] in
+      let commands2 =
+        commands ++
+        [Cmd.map CategoriesMsg command] in
+        ({ model | categoriesModel = { newModel | unsaved = False }}, Cmd.batch commands2)
     SaveComplete ->
       ( model
       , Cmd.none )
     LoadComplete master ->
-      ( { model | accountsModel = Pages.Accounts.updateFromMaster master model.accountsModel }
+      ( { model
+          | accountsModel = Pages.Accounts.updateFromMaster master model.accountsModel
+          , categoriesModel = Pages.Categories.updateFromMaster master model.categoriesModel }
       , Cmd.none )
     Error message ->
       ( { model | errorMessage = message }
@@ -88,6 +105,7 @@ view model =
   [
     div []
       [ button [ onClick <| SetTab Accounts ] [ text "Accounts" ]
+      , button [ onClick <| SetTab Categories ] [ text "Categories" ]
       , button [ onClick <| SetTab Budget ] [ text "Budget" ]
       , button [ onClick <| SetTab Transactions ] [ text "Transactions" ]
       ],
@@ -99,6 +117,8 @@ tabView model =
   case model.currentTab of
     Accounts ->
       Html.App.map AccountsMsg <| Pages.Accounts.view model.accountsModel
+    Categories ->
+      Html.App.map CategoriesMsg <| Pages.Categories.view model.categoriesModel
     Budget ->
       text "TODO: BUDGET"
     Transactions ->
@@ -122,5 +142,6 @@ subscriptions model = Platform.Sub.batch [
 
 master : Master
 master = {
-    accounts = []
+    accounts = [],
+    categories = []
   }
