@@ -1,20 +1,16 @@
 module Main exposing (main)
 
-import Data.Account exposing (Account)
 import Data.Master exposing (Master)
-import Data.Validation exposing (ErrorMessage)
 import Guards exposing ((|=),(=>))
 import Html exposing (Html, div, h1, input, text, button, span)
-import Html.App as App
-import Html.Attributes exposing (class, value)
-import Html.Events exposing (onInput, onClick)
+import Html.App
 import Platform.Sub
 import Storage.Storage as Storage
-import Table
+import Pages.Accounts
 
 main : Program Never
 main =
-  App.program
+  Html.App.program
     { init = init master
     , update = update
     , view = view
@@ -24,22 +20,19 @@ main =
 -- MODEL
 
 type alias Model =
-  { master : Master
-  , tableState : Table.State
-  , newAccountName : String
-  , errorMessage : String
-  , message : String
+  { accountsModel : Pages.Accounts.Model,
+    errorMessage : String
   }
+
+toMaster : Model -> Master
+toMaster model = { accounts = model.accountsModel.accounts }
 
 init : Master -> ( Model, Cmd Msg )
 init master =
   let
     model =
-      { master = master
-      , tableState = Table.initialSort "Name"
-      , newAccountName = ""
+      { accountsModel = Pages.Accounts.init master
       , errorMessage = ""
-      , message = ""
       }
   in
     ( model
@@ -48,114 +41,39 @@ init master =
 -- UPDATE
 
 type Msg =
-  SetTableState Table.State
-  | SetNewAccountName String
-  | AddNewAccount
-  | DeleteAccount String
-  | Save
+  AccountsMsg Pages.Accounts.Msg
   | SaveComplete
   | LoadComplete Master
   | Error String
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg ({master} as model) =
+update msg model =
   case msg of
-    SetTableState newState ->
-      ( { model | tableState = newState }
-      , Cmd.none
-      )
-    SetNewAccountName name ->
-      ( { model | newAccountName = name, errorMessage = "" }
-      , Cmd.none
-      )
-    DeleteAccount name ->
-      let newModel =
-        { model | master =
-          { master | accounts =
-            List.filter (\acc -> acc.name /= name) master.accounts
-          }
-        } in
-      (newModel
-      , Storage.setMaster newModel.master
-      )
-    AddNewAccount ->
-      let newAccount = {name = model.newAccountName} in
-      let validationResult = validateAccount newAccount master.accounts in
-      let newModel =
-        case validationResult of
-          Just errorMessage -> { model | errorMessage = errorMessage }
-          Nothing ->
-            { model | master =
-               { master | accounts =
-                  newAccount :: master.accounts
-               },
-               newAccountName = ""
-            } in
-      ( newModel
-      , case validationResult of
-          Just _ -> Cmd.none
-          Nothing -> Storage.setMaster newModel.master )
-    Save ->
-      ( model
-      , Storage.setMaster master)
+    AccountsMsg msg ->
+      -- TODO AUTOSAVE!
+      let (newModel, command) = Pages.Accounts.update msg model.accountsModel in
+      let commands =
+        newModel.unsaved => [Storage.setMaster <| Pages.Accounts.updateMaster newModel (toMaster model) ]
+        |= [] in
+      let commands2 =
+        commands ++
+        [Cmd.map AccountsMsg command] in
+        ({ model | accountsModel = { newModel | unsaved = False }}, Cmd.batch commands2)
     SaveComplete ->
       ( model
       , Cmd.none )
-    LoadComplete result ->
-      ( { model | master = result }
+    LoadComplete master ->
+      ( { model | accountsModel = Pages.Accounts.updateFromMaster master model.accountsModel }
       , Cmd.none )
     Error message ->
-      ( { model | message = "Error: " ++ message }
+      ( { model | errorMessage = message }
       , Cmd.none )
-
-validateAccount : Account -> List Account -> Maybe ErrorMessage
-validateAccount account existingAccounts =
-  account.name == ""
-    => Just "Account Name Required"
-  |= (List.any (\existingAccount -> existingAccount.name == account.name)) existingAccounts
-    => Just "Account Name Already In Use"
-  |= Nothing
 
 -- VIEW
 
 view : Model -> Html Msg
-view ({ master, tableState, errorMessage, message } as model) =
-  div []
-    [ h1 [] [ text "Accounts" ]
-    , text message
-    , addAccountView model
-    , span [ class "error" ] [ text errorMessage ]
-    , Table.view config tableState master.accounts
-    ]
-
-addAccountView : Model -> Html Msg
-addAccountView { newAccountName } =
-  div []
-    [ text "Add Account:"
-    , input [ onInput SetNewAccountName, value newAccountName ] []
-    , button [ onClick AddNewAccount ] [ text "Add" ]
-    ]
-
-deleteColumn : Table.Column Account Msg
-deleteColumn = Table.veryCustomColumn
-  { name = ""
-  , viewData = (\account ->
-    { attributes = []
-    , children = [ button [ onClick <| DeleteAccount account.name ] [ text "Delete" ] ]
-    })
-  , sorter = Table.unsortable }
-
-
-config : Table.Config Account Msg
-config =
-  Table.config
-    { toId = .name
-    , toMsg = SetTableState
-    , columns =
-        [ Table.stringColumn "Name" .name
-        , deleteColumn
-        ]
-    }
+view (model) =
+  Html.App.map AccountsMsg <| Pages.Accounts.view model.accountsModel
 
 -- SUBSCRIPTIONS
 
