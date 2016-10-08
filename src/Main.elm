@@ -4,6 +4,7 @@ import Data.Master exposing (Master)
 import Guards exposing ((|=),(=>))
 import Html exposing (Html, div, h1, input, text, button, span)
 import Html.App
+import Html.Events exposing (onClick)
 import Platform.Sub
 import Storage.Storage as Storage
 import Pages.Accounts
@@ -20,9 +21,15 @@ main =
 -- MODEL
 
 type alias Model =
-  { accountsModel : Pages.Accounts.Model,
+  { currentTab : Tab,
+    accountsModel : Pages.Accounts.Model,
     errorMessage : String
   }
+
+type Tab =
+  Accounts
+  | Budget
+  | Transactions
 
 toMaster : Model -> Master
 toMaster model = { accounts = model.accountsModel.accounts }
@@ -31,7 +38,8 @@ init : Master -> ( Model, Cmd Msg )
 init master =
   let
     model =
-      { accountsModel = Pages.Accounts.init master
+      { currentTab = Accounts
+      , accountsModel = Pages.Accounts.init master
       , errorMessage = ""
       }
   in
@@ -45,6 +53,7 @@ type Msg =
   | SaveComplete
   | LoadComplete Master
   | Error String
+  | SetTab Tab
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -68,12 +77,32 @@ update msg model =
     Error message ->
       ( { model | errorMessage = message }
       , Cmd.none )
+    SetTab tab ->
+      ( { model | currentTab = tab }
+      , Cmd.none )
 
 -- VIEW
-
 view : Model -> Html Msg
-view (model) =
-  Html.App.map AccountsMsg <| Pages.Accounts.view model.accountsModel
+view model =
+  div []
+  [
+    div []
+      [ button [ onClick <| SetTab Accounts ] [ text "Accounts" ]
+      , button [ onClick <| SetTab Budget ] [ text "Budget" ]
+      , button [ onClick <| SetTab Transactions ] [ text "Transactions" ]
+      ],
+    div [] [tabView model]
+  ]
+
+tabView : Model -> Html Msg
+tabView model =
+  case model.currentTab of
+    Accounts ->
+      Html.App.map AccountsMsg <| Pages.Accounts.view model.accountsModel
+    Budget ->
+      text "TODO: BUDGET"
+    Transactions ->
+      text "TODO: TXNS"
 
 -- SUBSCRIPTIONS
 
