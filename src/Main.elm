@@ -1,7 +1,7 @@
 module Main exposing (main)
 
 import Data.Master exposing (Master)
-import Data.Notification exposing (Notification)
+import Data.Notification exposing (Notification, NotificationSet, emptyNotificationSet, addNotification, removeNotification)
 import Guards exposing ((|=),(=>))
 import Html exposing (Html, div, h1, input, text, button, span)
 import Html.App
@@ -31,7 +31,7 @@ type alias Model =
   , accountsModel : Pages.Accounts.Model
   , categoriesModel : Pages.Categories.Model
   , errorMessage : String
-  , notifications : List Notification
+  , notifications : NotificationSet
   }
 
 type Tab =
@@ -53,7 +53,7 @@ init master =
       , accountsModel = Pages.Accounts.init master
       , categoriesModel = Pages.Categories.init master
       , errorMessage = ""
-      , notifications = []
+      , notifications = emptyNotificationSet
       }
   in
     ( model
@@ -71,6 +71,13 @@ type Msg =
   | Save
   | RemoveNotification Notification
 
+notify : Model -> String -> ( Model, Cmd Msg )
+notify model msg =
+  let (notifications, notification) = addNotification msg model.notifications in
+  ( { model | notifications = notifications }
+  , Task.perform (never) (always <| RemoveNotification notification ) (Process.sleep (5 * second)) )
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
   case msg of
@@ -84,11 +91,9 @@ update msg model =
       ( model
       , Storage.setMaster (toMaster model))
     SaveComplete ->
-      let notification = { message = "Your data has been saved" } in
-      ( { model | notifications = notification :: model.notifications }
-      , Task.perform (never) (always <| RemoveNotification notification ) (Process.sleep (5 * second)) )
-    RemoveNotification {message} ->
-      ( { model | notifications = List.filter (\n -> n.message /= message) model.notifications }
+      notify model "Your data has been saved"
+    RemoveNotification n ->
+      ( { model | notifications = removeNotification n model.notifications }
       , Cmd.none )
     LoadComplete master ->
       ( { model
@@ -107,7 +112,7 @@ view : Model -> Html Msg
 view model =
   div []
   [
-    div [] <| List.map (\note -> text note.message) model.notifications,
+    div [] <| List.map (\note -> text note.message) model.notifications.notifications,
     div []
       [ button [ onClick <| Save ] [ text "Save" ] ],
     div []
