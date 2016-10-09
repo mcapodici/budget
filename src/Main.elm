@@ -10,6 +10,10 @@ import Platform.Sub
 import Storage.Storage as Storage
 import Pages.Accounts
 import Pages.Categories
+import Process
+import Task
+import Basics.Extra exposing (never)
+import Time exposing (second)
 
 main : Program Never
 main =
@@ -65,6 +69,7 @@ type Msg =
   | Error String
   | SetTab Tab
   | Save
+  | RemoveNotification Notification
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -79,11 +84,11 @@ update msg model =
       ( model
       , Storage.setMaster (toMaster model))
     SaveComplete ->
-      ( { model | notifications =
-          { message = "Your data has been saved"
-          , expiry = 0 -- TODO Actually use times
-          } :: model.notifications
-        }
+      let notification = { message = "Your data has been saved" } in
+      ( { model | notifications = notification :: model.notifications }
+      , Task.perform (never) (always <| RemoveNotification notification ) (Process.sleep (5 * second)) )
+    RemoveNotification {message} ->
+      ( { model | notifications = List.filter (\n -> n.message /= message) model.notifications }
       , Cmd.none )
     LoadComplete master ->
       ( { model
@@ -102,7 +107,7 @@ view : Model -> Html Msg
 view model =
   div []
   [
-    div [] <| List.map (\note -> text note.message) model.notifications, 
+    div [] <| List.map (\note -> text note.message) model.notifications,
     div []
       [ button [ onClick <| Save ] [ text "Save" ] ],
     div []
