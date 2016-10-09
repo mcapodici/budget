@@ -15,7 +15,6 @@ type alias Model =
   , newCategoryName : String
   , errorMessage : String
   , message : String
-  , unsaved : Bool
   }
 
 updateFromMaster : Master -> Model -> Model
@@ -33,7 +32,6 @@ init master =
   , newCategoryName = ""
   , errorMessage = ""
   , message = ""
-  , unsaved = False
   }
 
 -- UPDATE
@@ -59,8 +57,7 @@ update msg ({categories} as model) =
     DeleteCategory name ->
       let newModel =
         { model |
-            categories = List.filter (\acc -> acc.name /= name) categories,
-            unsaved = True
+            categories = List.filter (\acc -> acc.name /= name) categories
         } in
       (newModel
       , Cmd.none
@@ -74,8 +71,7 @@ update msg ({categories} as model) =
           Nothing ->
             { model |
                 categories = newCategory :: categories,
-                newCategoryName = "",
-                unsaved = True
+                newCategoryName = ""
             } in
       ( newModel
       , Cmd.none )

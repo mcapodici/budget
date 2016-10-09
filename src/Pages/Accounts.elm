@@ -15,7 +15,6 @@ type alias Model =
   , newAccountName : String
   , errorMessage : String
   , message : String
-  , unsaved : Bool
   }
 
 updateFromMaster : Master -> Model -> Model
@@ -33,7 +32,6 @@ init master =
   , newAccountName = ""
   , errorMessage = ""
   , message = ""
-  , unsaved = False
   }
 
 -- UPDATE
@@ -59,8 +57,7 @@ update msg ({accounts} as model) =
     DeleteAccount name ->
       let newModel =
         { model |
-            accounts = List.filter (\acc -> acc.name /= name) accounts,
-            unsaved = True
+            accounts = List.filter (\acc -> acc.name /= name) accounts
         } in
       (newModel
       , Cmd.none
@@ -74,8 +71,7 @@ update msg ({accounts} as model) =
           Nothing ->
             { model |
                 accounts = newAccount :: accounts,
-                newAccountName = "",
-                unsaved = True
+                newAccountName = ""
             } in
       ( newModel
       , Cmd.none )

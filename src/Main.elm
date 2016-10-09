@@ -1,6 +1,7 @@
 module Main exposing (main)
 
 import Data.Master exposing (Master)
+import Data.Notification exposing (Notification)
 import Guards exposing ((|=),(=>))
 import Html exposing (Html, div, h1, input, text, button, span)
 import Html.App
@@ -22,10 +23,11 @@ main =
 -- MODEL
 
 type alias Model =
-  { currentTab : Tab,
-    accountsModel : Pages.Accounts.Model,
-    categoriesModel : Pages.Categories.Model,
-    errorMessage : String
+  { currentTab : Tab
+  , accountsModel : Pages.Accounts.Model
+  , categoriesModel : Pages.Categories.Model
+  , errorMessage : String
+  , notifications : List Notification
   }
 
 type Tab =
@@ -47,6 +49,7 @@ init master =
       , accountsModel = Pages.Accounts.init master
       , categoriesModel = Pages.Categories.init master
       , errorMessage = ""
+      , notifications = []
       }
   in
     ( model
@@ -61,30 +64,26 @@ type Msg =
   | LoadComplete Master
   | Error String
   | SetTab Tab
+  | Save
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
   case msg of
     AccountsMsg msg ->
       let (newModel, command) = Pages.Accounts.update msg model.accountsModel in
-      let commands =
-        newModel.unsaved => [Storage.setMaster <| Pages.Accounts.updateMaster newModel (toMaster model) ]
-        |= [] in
-      let commands2 =
-        commands ++
-        [Cmd.map AccountsMsg command] in
-        ({ model | accountsModel = { newModel | unsaved = False }}, Cmd.batch commands2)
+        ({ model | accountsModel = newModel}, Cmd.map AccountsMsg command)
     CategoriesMsg msg ->
       let (newModel, command) = Pages.Categories.update msg model.categoriesModel in
-      let commands =
-        newModel.unsaved => [Storage.setMaster <| Pages.Categories.updateMaster newModel (toMaster model) ]
-        |= [] in
-      let commands2 =
-        commands ++
-        [Cmd.map CategoriesMsg command] in
-        ({ model | categoriesModel = { newModel | unsaved = False }}, Cmd.batch commands2)
-    SaveComplete ->
+        ({ model | categoriesModel = newModel}, Cmd.map CategoriesMsg command)
+    Save ->
       ( model
+      , Storage.setMaster (toMaster model))
+    SaveComplete ->
+      ( { model | notifications =
+          { message = "Your data has been saved"
+          , expiry = 0 -- TODO Actually use times
+          } :: model.notifications
+        }
       , Cmd.none )
     LoadComplete master ->
       ( { model
@@ -103,6 +102,9 @@ view : Model -> Html Msg
 view model =
   div []
   [
+    div [] <| List.map (\note -> text note.message) model.notifications, 
+    div []
+      [ button [ onClick <| Save ] [ text "Save" ] ],
     div []
       [ button [ onClick <| SetTab Accounts ] [ text "Accounts" ]
       , button [ onClick <| SetTab Categories ] [ text "Categories" ]
